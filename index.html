@@ -5,77 +5,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RC Cast TV - Web Receiver</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      background: #0D1B2A;
-      overflow: hidden;
-      font-family: "Roboto", Arial, sans-serif;
-      color: #fff;
-    }
+    html, body { margin: 0; padding: 0; height: 100%; background: #0D1B2A; overflow: hidden; }
     cast-media-player {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
       --background-color: #0D1B2A;
-      --splash-image: none;
-      --theme-hue: 200;
     }
-    #idle {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+    #overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       text-align: center;
-      transition: opacity .4s;
+      font-family: "Roboto", Arial, sans-serif; color: #fff;
+      pointer-events: none;
     }
-    #idle h1 { font-size: 42px; margin: 0 0 12px; font-weight: 500; }
-    #idle p  { font-size: 20px; color: #8ECAE6; margin: 0; }
-    #idle.hidden { opacity: 0; pointer-events: none; }
+    #overlay h1 { font-size: 42px; margin: 0 0 12px; font-weight: 500; }
+    #overlay p  { font-size: 20px; color: #8ECAE6; margin: 0; }
+    #err { color: #ff6b6b; font-size: 16px; margin-top: 16px; max-width: 80%; word-break: break-word; }
   </style>
 </head>
 <body>
   <cast-media-player></cast-media-player>
 
-  <div id="idle">
+  <div id="overlay">
     <h1>RC Cast TV</h1>
-    <p>Listo · Esperando conexión…</p>
+    <p id="msg">Listo · Esperando conexión…</p>
+    <p id="err"></p>
   </div>
 
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
   <script>
     const context = cast.framework.CastReceiverContext.getInstance();
     const playerManager = context.getPlayerManager();
-    const idle = document.getElementById('idle');
+    const overlay = document.getElementById('overlay');
+    const msg = document.getElementById('msg');
+    const err = document.getElementById('err');
 
-    // Hide/show the idle splash based on player state
-    playerManager.addEventListener(
-      cast.framework.events.EventType.MEDIA_STATUS,
-      (event) => {
-        const state = event.mediaStatus && event.mediaStatus.playerState;
-        if (state === cast.framework.messages.PlayerState.IDLE || !state) {
-          idle.classList.remove('hidden');
-        } else {
-          idle.classList.add('hidden');
-        }
-      }
-    );
+    const EV = cast.framework.events.EventType;
 
-    // Log incoming LOAD requests (useful for debugging in the Cast console)
-    playerManager.setMessageInterceptor(
-      cast.framework.messages.MessageType.LOAD,
-      (loadRequestData) => {
-        console.log('LOAD request:', JSON.stringify(loadRequestData));
-        return loadRequestData;
-      }
-    );
+    playerManager.addEventListener(EV.LOAD_START, () => {
+      msg.textContent = 'Cargando video…';
+      err.textContent = '';
+    });
 
-    const options = new cast.framework.CastReceiverOptions();
-    // Keep the receiver alive a bit after playback ends
-    options.maxInactivity = 3600;
-    options.statusText = 'RC Cast TV listo';
+    playerManager.addEventListener(EV.PLAYER_LOAD_COMPLETE, () => {
+      overlay.style.display = 'none';
+    });
 
-    context.start(options);
+    playerManager.addEventListener(EV.MEDIA_FINISHED, () => {
+      overlay.style.display = 'flex';
+      msg.textContent = 'Listo · Esperando conexión…';
+    });
+
+    playerManager.addEventListener(EV.ERROR, (event) => {
+      overlay.style.display = 'flex';
+      msg.textContent = 'Error al reproducir';
+      err.textContent = 'code=' + (event.detailedErrorCode || '?') +
+                        '  reason=' + (event.reason || '?');
+      console.error('CAF ERROR', event);
+    });
+
+    context.start();
   </script>
 </body>
 </html>
