@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RC Cast TV - Web Receiver</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #0D1B2A;
+      overflow: hidden;
+      font-family: "Roboto", Arial, sans-serif;
+      color: #fff;
+    }
+    cast-media-player {
+      --background-color: #0D1B2A;
+      --splash-image: none;
+      --theme-hue: 200;
+    }
+    #idle {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: opacity .4s;
+    }
+    #idle h1 { font-size: 42px; margin: 0 0 12px; font-weight: 500; }
+    #idle p  { font-size: 20px; color: #8ECAE6; margin: 0; }
+    #idle.hidden { opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <cast-media-player></cast-media-player>
+
+  <div id="idle">
+    <h1>RC Cast TV</h1>
+    <p>Listo · Esperando conexión…</p>
+  </div>
+
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script>
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const playerManager = context.getPlayerManager();
+    const idle = document.getElementById('idle');
+
+    // Hide/show the idle splash based on player state
+    playerManager.addEventListener(
+      cast.framework.events.EventType.MEDIA_STATUS,
+      (event) => {
+        const state = event.mediaStatus && event.mediaStatus.playerState;
+        if (state === cast.framework.messages.PlayerState.IDLE || !state) {
+          idle.classList.remove('hidden');
+        } else {
+          idle.classList.add('hidden');
+        }
+      }
+    );
+
+    // Log incoming LOAD requests (useful for debugging in the Cast console)
+    playerManager.setMessageInterceptor(
+      cast.framework.messages.MessageType.LOAD,
+      (loadRequestData) => {
+        console.log('LOAD request:', JSON.stringify(loadRequestData));
+        return loadRequestData;
+      }
+    );
+
+    const options = new cast.framework.CastReceiverOptions();
+    // Keep the receiver alive a bit after playback ends
+    options.maxInactivity = 3600;
+    options.statusText = 'RC Cast TV listo';
+
+    context.start(options);
+  </script>
+</body>
+</html>
