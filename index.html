@@ -63,21 +63,22 @@
       err.textContent = errorText || '';
     }
     let webTimer = null;
-    function showWeb(url) {
-      // Mostrar la URL mientras carga
-      showOverlay('Abriendo: ' + url);
+    function showWeb(url, detectBlock) {
+      showOverlay('Cargando…', url);
       overlay.classList.remove('hidden');
       web.src = url;
-      web.classList.add('show');
+      web.classList.add('show');   // el iframe queda visible siempre
       mediaPlayer.style.display = 'none';
 
-      // Si en 6s el iframe no disparó load, avisar (sitio bloquea iframe)
       clearTimeout(webTimer);
-      webTimer = setTimeout(() => {
-        showOverlay('La página no cargó',
-          'El sitio probablemente bloquea iframes (X-Frame-Options/CSP). URL: ' + url);
-        web.classList.remove('show');
-      }, 6000);
+      if (detectBlock) {
+        // Solo para páginas web genéricas: si a los 15s no cargó, avisar
+        // (pero NO escondemos el iframe, por si carga tarde)
+        webTimer = setTimeout(() => {
+          showOverlay('Si sigue en negro, este sitio bloquea iframes',
+            'X-Frame-Options/CSP · ' + url);
+        }, 15000);
+      }
     }
     web.addEventListener('load', () => {
       if (web.src && web.src !== 'about:blank') {
@@ -113,10 +114,10 @@
     context.addCustomMessageListener(NS, (event) => {
       const data = event.data || {};
       if (data.type === 'youtube' && data.id) {
-        showWeb('https://www.youtube.com/embed/' + data.id +
-                '?autoplay=1&playsinline=1&rel=0');
+        showWeb('https://www.youtube-nocookie.com/embed/' + data.id +
+                '?autoplay=1&playsinline=1&rel=0&modestbranding=1', false);
       } else if (data.type === 'web' && data.url) {
-        showWeb(data.url);
+        showWeb(data.url, true);
       } else if (data.type === 'stop') {
         showVideo();
         showOverlay();
