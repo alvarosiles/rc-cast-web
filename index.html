@@ -62,12 +62,29 @@
       msg.textContent = text || 'Listo · Esperando conexión…';
       err.textContent = errorText || '';
     }
+    let webTimer = null;
     function showWeb(url) {
+      // Mostrar la URL mientras carga
+      showOverlay('Abriendo: ' + url);
+      overlay.classList.remove('hidden');
       web.src = url;
       web.classList.add('show');
       mediaPlayer.style.display = 'none';
-      overlay.classList.add('hidden');
+
+      // Si en 6s el iframe no disparó load, avisar (sitio bloquea iframe)
+      clearTimeout(webTimer);
+      webTimer = setTimeout(() => {
+        showOverlay('La página no cargó',
+          'El sitio probablemente bloquea iframes (X-Frame-Options/CSP). URL: ' + url);
+        web.classList.remove('show');
+      }, 6000);
     }
+    web.addEventListener('load', () => {
+      if (web.src && web.src !== 'about:blank') {
+        clearTimeout(webTimer);
+        overlay.classList.add('hidden');
+      }
+    });
     function showVideo() {
       web.classList.remove('show');
       web.src = 'about:blank';
